@@ -254,7 +254,7 @@ async function trainLSTM(
   });
   const testXs = tfModule.tensor3d(X_test);
   const predTensor = model.predict(testXs) as any;
-  const predictions = Array.from(await predTensor.data()).slice(0, X_test.length);
+  const predictions = (Array.from(await predTensor.data()) as number[]).slice(0, X_test.length);
   xs.dispose(); ys.dispose(); testXs.dispose(); predTensor.dispose();
   return { predictions, model, history };
 }
