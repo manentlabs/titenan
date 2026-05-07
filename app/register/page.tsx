@@ -16,11 +16,10 @@ export default function Register() {
   const [loadMsg, setLoadMsg] = useState("");
   const [serverErr, setServerErr] = useState("");
 
-  // State untuk toggle visibility password
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  /* ── Canvas particle network (sama dengan halaman login) ── */
+  /* ── Canvas particle network ── */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -137,7 +136,6 @@ export default function Register() {
     },
   });
 
-  // Ikon mata sederhana
   const EyeIcon = ({ open }: { open: boolean }) => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       {open ? (
@@ -159,52 +157,71 @@ export default function Register() {
       <style>{globalCSS}</style>
       <div style={s.body}>
 
-        {/* ── LEFT ── */}
-        <div style={s.left}>
+        {/* ── LEFT (desktop) / MOBILE HEADER ── */}
+        <div style={s.left} className="left-panel">
           <canvas ref={canvasRef} style={s.canvas} />
           <div style={s.vizArea}>
-            <p style={s.brandTag}>// DATALYTICS PLATFORM v2.4</p>
-            <h1 style={s.heroTitle}>Mulai Perjalanan<br />Analisis Data Anda</h1>
-            <p style={s.heroSub}>Daftarkan akun Anda dan dapatkan akses penuh ke empat modul machine learning terpadu.</p>
-
-            {/* Step list */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 36 }}>
-              {[
-                { n: "01", title: "Buat Akun",        desc: "Isi data diri Anda dengan aman",          c: "#6366f1", bg: "rgba(99,102,241,0.08)"  },
-                { n: "02", title: "Verifikasi Email",  desc: "Konfirmasi kepemilikan email Anda",       c: "#a855f7", bg: "rgba(168,85,247,0.08)"  },
-                { n: "03", title: "Akses Dashboard",   desc: "Gunakan semua fitur analitik langsung",   c: "#f59e0b", bg: "rgba(245,158,11,0.08)"  },
-              ].map((step, idx) => (
-                <div key={idx} className="step-card" style={{ display:"flex", alignItems:"center", gap:16, background:step.bg, border:`1px solid ${step.c}22`, borderRadius:12, padding:"14px 18px" }}>
-                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, fontWeight:500, color:step.c, minWidth:24 }}>{step.n}</div>
-                  <div style={{ width:1, height:28, background:step.c, opacity:0.25 }} />
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:600, color:"#1a1a2e", marginBottom:2 }}>{step.title}</div>
-                    <div style={{ fontSize:11.5, color:"#9ca3af" }}>{step.desc}</div>
+            {/* Mobile: compact header */}
+            <div className="mobile-header">
+              <p style={s.brandTag}>// DATALYTICS PLATFORM v2.4</p>
+              <h1 style={{ ...s.heroTitle, fontSize: "clamp(20px,5vw,28px)", marginBottom: 4 }}>
+                Mulai Perjalanan Analisis Data Anda
+              </h1>
+              {/* Mobile step pills */}
+              <div className="mobile-steps">
+                {["Buat Akun", "Verifikasi Email", "Akses Dashboard"].map((s, i) => (
+                  <div key={i} className="mobile-step-pill">
+                    <span className="mobile-step-num">0{i + 1}</span>
+                    <span className="mobile-step-label">{s}</span>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            <div style={s.tagRow}>
-              {[
-                { text: "Enkripsi bcrypt",     c:"#6366f1", bc:"rgba(99,102,241,0.35)",  bg:"rgba(99,102,241,0.07)"  },
-                { text: "OAuth 2.0 Google",    c:"#a855f7", bc:"rgba(168,85,247,0.35)",  bg:"rgba(168,85,247,0.07)"  },
-                { text: "Prisma ORM",          c:"#d97706", bc:"rgba(217,119,6,0.35)",   bg:"rgba(245,158,11,0.07)"  },
-                { text: "PostgreSQL",          c:"#dc2626", bc:"rgba(220,38,38,0.35)",   bg:"rgba(239,68,68,0.07)"   },
-              ].map(t => (
-                <span key={t.text} style={{ ...s.tag, color:t.c, borderColor:t.bc, background:t.bg }}>{t.text}</span>
-              ))}
+            {/* Desktop: full content */}
+            <div className="desktop-only">
+              <p style={s.brandTag}>// DATALYTICS PLATFORM v2.4</p>
+              <h1 style={s.heroTitle}>Mulai Perjalanan<br />Analisis Data Anda</h1>
+              <p style={s.heroSub}>Daftarkan akun Anda dan dapatkan akses penuh ke empat modul machine learning terpadu.</p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 36 }}>
+                {[
+                  { n: "01", title: "Buat Akun",        desc: "Isi data diri Anda dengan aman",          c: "#6366f1", bg: "rgba(99,102,241,0.08)"  },
+                  { n: "02", title: "Verifikasi Email",  desc: "Konfirmasi kepemilikan email Anda",       c: "#a855f7", bg: "rgba(168,85,247,0.08)"  },
+                  { n: "03", title: "Akses Dashboard",   desc: "Gunakan semua fitur analitik langsung",   c: "#f59e0b", bg: "rgba(245,158,11,0.08)"  },
+                ].map((step, idx) => (
+                  <div key={idx} className="step-card" style={{ display:"flex", alignItems:"center", gap:16, background:step.bg, border:`1px solid ${step.c}22`, borderRadius:12, padding:"14px 18px" }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, fontWeight:500, color:step.c, minWidth:24 }}>{step.n}</div>
+                    <div style={{ width:1, height:28, background:step.c, opacity:0.25 }} />
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:600, color:"#1a1a2e", marginBottom:2 }}>{step.title}</div>
+                      <div style={{ fontSize:11.5, color:"#9ca3af" }}>{step.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={s.tagRow}>
+                {[
+                  { text: "Enkripsi bcrypt",     c:"#6366f1", bc:"rgba(99,102,241,0.35)",  bg:"rgba(99,102,241,0.07)"  },
+                  { text: "OAuth 2.0 Google",    c:"#a855f7", bc:"rgba(168,85,247,0.35)",  bg:"rgba(168,85,247,0.07)"  },
+                  { text: "Prisma ORM",          c:"#d97706", bc:"rgba(217,119,6,0.35)",   bg:"rgba(245,158,11,0.07)"  },
+                  { text: "PostgreSQL",          c:"#dc2626", bc:"rgba(220,38,38,0.35)",   bg:"rgba(239,68,68,0.07)"   },
+                ].map(t => (
+                  <span key={t.text} style={{ ...s.tag, color:t.c, borderColor:t.bc, background:t.bg }}>{t.text}</span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ── RIGHT ── */}
-        <div style={s.right}>
+        {/* ── RIGHT / FORM PANEL ── */}
+        <div style={s.right} className="right-panel">
 
           {/* FORM */}
           {view === "form" && (
             <div className="fade-up">
-              <div style={{ marginBottom: 32 }}>
+              <div style={{ marginBottom: 24 }}>
                 <h2 style={s.loginH2}>Buat Akun Baru</h2>
                 <p style={s.loginSub}>Daftar gratis dan mulai analisis data Anda hari ini.</p>
               </div>
@@ -234,26 +251,20 @@ export default function Register() {
                 {errors.email && <p style={s.errMsg}>{errors.email}</p>}
               </div>
 
-              {/* Password dengan tombol mata */}
+              {/* Password */}
               <div style={s.field}>
                 <label style={s.fieldLabel}>Password</label>
                 <div style={s.passwordWrapper}>
-                  <input style={{ ...s.input, ...(errors.password ? s.inputErr : {}), paddingRight: 42 }}
+                  <input style={{ ...s.input, ...(errors.password ? s.inputErr : {}), paddingRight: 48 }}
                     type={showPassword ? "text" : "password"}
                     placeholder="Min. 8 karakter + huruf kapital + angka"
                     {...field("password")}
                     className="custom-input"
                   />
-                  <button
-                    type="button"
-                    style={s.eyeButton}
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
-                  >
+                  <button type="button" style={s.eyeButton} onClick={() => setShowPassword(!showPassword)} tabIndex={-1} aria-label="Toggle password visibility">
                     <EyeIcon open={showPassword} />
                   </button>
                 </div>
-                {/* Strength bar */}
                 {form.password.length > 0 && (
                   <div style={{ marginTop: 8 }}>
                     <div style={{ display:"flex", gap:4, marginBottom:5 }}>
@@ -261,36 +272,31 @@ export default function Register() {
                         <div key={i} style={{ flex:1, height:3, borderRadius:2, background: i <= strength.level ? strength.color : "rgba(0,0,0,0.08)", transition:"background 0.3s" }} />
                       ))}
                     </div>
-                    <p style={{ fontSize:11, color:strength.color, fontFamily:"'DM Mono',monospace" }}>Kekuatan password: {strength.label}</p>
+                    <p style={{ fontSize:11, color:strength.color, fontFamily:"'DM Mono',monospace" }}>Kekuatan: {strength.label}</p>
                   </div>
                 )}
                 {errors.password && <p style={s.errMsg}>{errors.password}</p>}
               </div>
 
-              {/* Confirm Password dengan tombol mata */}
+              {/* Confirm Password */}
               <div style={s.field}>
                 <label style={s.fieldLabel}>Konfirmasi Password</label>
                 <div style={s.passwordWrapper}>
-                  <input style={{ ...s.input, ...(errors.confirm ? s.inputErr : {}), paddingRight: 42 }}
+                  <input style={{ ...s.input, ...(errors.confirm ? s.inputErr : {}), paddingRight: 48 }}
                     type={showConfirm ? "text" : "password"}
                     placeholder="Ulangi password Anda"
                     {...field("confirm")}
                     onKeyDown={e => e.key === "Enter" && handleSubmit()}
                     className="custom-input"
                   />
-                  <button
-                    type="button"
-                    style={s.eyeButton}
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    tabIndex={-1}
-                  >
+                  <button type="button" style={s.eyeButton} onClick={() => setShowConfirm(!showConfirm)} tabIndex={-1} aria-label="Toggle confirm password visibility">
                     <EyeIcon open={showConfirm} />
                   </button>
                 </div>
                 {errors.confirm && <p style={s.errMsg}>{errors.confirm}</p>}
               </div>
 
-              {/* Terms notice */}
+              {/* Terms */}
               <p style={{ fontSize:11, color:"#9ca3af", lineHeight:1.6, marginBottom:16 }}>
                 Dengan mendaftar, Anda menyetujui{" "}
                 <a href="/terms" style={{ color:"#6366f1", textDecoration:"none" }}>Syarat & Ketentuan</a>
@@ -352,9 +358,9 @@ export default function Register() {
   );
 }
 
-/* ── Styles (konsisten dengan halaman login) ── */
+/* ── Styles ── */
 const s: Record<string, React.CSSProperties> = {
-  body:       { display:"flex", minHeight:"100vh", background:"#f8f8f6", color:"#1a1a2e", fontFamily:"'Outfit',sans-serif", overflow:"hidden" },
+  body:       { display:"flex", minHeight:"100vh", background:"#f8f8f6", color:"#1a1a2e", fontFamily:"'Outfit',sans-serif" },
   left:       { width:"55%", position:"relative", display:"flex", flexDirection:"column", justifyContent:"center", padding:"48px 56px", overflow:"hidden", borderRight:"1px solid rgba(0,0,0,0.07)", background:"#f0f0ed" },
   canvas:     { position:"absolute", inset:0, width:"100%", height:"100%", zIndex:0 },
   vizArea:    { position:"relative", zIndex:1, pointerEvents:"none" },
@@ -366,55 +372,121 @@ const s: Record<string, React.CSSProperties> = {
   right:      { width:"45%", display:"flex", flexDirection:"column", justifyContent:"center", padding:"48px 52px", position:"relative", overflowY:"auto" as const, background:"#f8f8f6" },
   loginH2:    { fontSize:24, fontWeight:700, marginBottom:6, color:"#1a1a2e" },
   loginSub:   { fontSize:13, color:"#6b7280", lineHeight:1.6 },
-  field:      { marginBottom:16 },
-  fieldLabel: { display:"block", fontSize:11.5, fontWeight:600, letterSpacing:"0.06em", color:"#6b7280", marginBottom:8, textTransform:"uppercase" as const },
-  input:      { width:"100%", padding:"12px 16px", background:"#ffffff", border:"1px solid rgba(0,0,0,0.12)", borderRadius:10, color:"#1a1a2e", fontFamily:"'Outfit',sans-serif", fontSize:14, outline:"none", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
+  field:      { marginBottom:14 },
+  fieldLabel: { display:"block", fontSize:11.5, fontWeight:600, letterSpacing:"0.06em", color:"#6b7280", marginBottom:7, textTransform:"uppercase" as const },
+  input:      { width:"100%", padding:"12px 16px", background:"#ffffff", border:"1px solid rgba(0,0,0,0.12)", borderRadius:10, color:"#1a1a2e", fontFamily:"'Outfit',sans-serif", fontSize:16, outline:"none", boxShadow:"0 1px 3px rgba(0,0,0,0.05)", WebkitAppearance: "none" },
   inputErr:   { borderColor:"rgba(239,68,68,0.5)", background:"rgba(239,68,68,0.03)" },
   errMsg:     { fontSize:11, color:"#ef4444", marginTop:5, fontFamily:"'DM Mono',monospace" },
   alertErr:   { display:"flex", alignItems:"center", gap:8, padding:"11px 14px", background:"rgba(239,68,68,0.06)", border:"1px solid rgba(239,68,68,0.2)", borderRadius:10, fontSize:13, color:"#dc2626", marginBottom:18 },
-  btnLogin:   { width:"100%", padding:14, background:"linear-gradient(135deg,#6366f1,#8b5cf6)", border:"none", borderRadius:10, color:"#ffffff", fontFamily:"'Outfit',sans-serif", fontSize:14, fontWeight:700, cursor:"pointer", letterSpacing:"0.02em", marginTop:4, boxShadow:"0 4px 14px rgba(99,102,241,0.3)" },
-  orRow:      { display:"flex", alignItems:"center", gap:12, margin:"18px 0" },
+  btnLogin:   { width:"100%", padding:15, background:"linear-gradient(135deg,#6366f1,#8b5cf6)", border:"none", borderRadius:10, color:"#ffffff", fontFamily:"'Outfit',sans-serif", fontSize:15, fontWeight:700, cursor:"pointer", letterSpacing:"0.02em", marginTop:4, boxShadow:"0 4px 14px rgba(99,102,241,0.3)", WebkitAppearance: "none", touchAction: "manipulation" },
+  orRow:      { display:"flex", alignItems:"center", gap:12, margin:"16px 0" },
   orLine:     { flex:1, height:1, background:"rgba(0,0,0,0.08)" },
   orText:     { fontSize:11, color:"#9ca3af", fontFamily:"'DM Mono',monospace" },
-  btnGoogle:  { width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10, padding:13, background:"#ffffff", border:"1px solid rgba(0,0,0,0.1)", borderRadius:10, color:"#1a1a2e", fontFamily:"'Outfit',sans-serif", fontSize:13.5, fontWeight:500, cursor:"pointer", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" },
-  loginFooter:{ textAlign:"center" as const, fontSize:11.5, color:"#9ca3af", marginTop:20 },
+  btnGoogle:  { width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10, padding:14, background:"#ffffff", border:"1px solid rgba(0,0,0,0.1)", borderRadius:10, color:"#1a1a2e", fontFamily:"'Outfit',sans-serif", fontSize:14, fontWeight:500, cursor:"pointer", boxShadow:"0 1px 4px rgba(0,0,0,0.06)", WebkitAppearance: "none", touchAction: "manipulation" },
+  loginFooter:{ textAlign:"center" as const, fontSize:12, color:"#9ca3af", marginTop:20 },
   spinnerRing:{ width:40, height:40, border:"2px solid rgba(0,0,0,0.08)", borderTopColor:"#6366f1", borderRadius:"50%", animation:"spin 0.75s linear infinite" },
   loadingText:{ fontSize:13, color:"#9ca3af", fontFamily:"'DM Mono',monospace" },
-  // Style untuk wrapper input password + tombol mata
-  passwordWrapper: {
-    position: "relative" as const,
-  },
-  eyeButton: {
-    position: "absolute" as const,
-    right: 12,
-    top: "50%",
-    transform: "translateY(-50%)",
-    background: "transparent",
-    border: "none",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 0,
-    color: "#9ca3af",
-    transition: "color 0.2s",
-  },
+  passwordWrapper: { position:"relative" as const },
+  eyeButton: { position:"absolute" as const, right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:4, color:"#9ca3af", transition:"color 0.2s", minWidth:32, minHeight:32, touchAction:"manipulation" },
 };
 
 const globalCSS = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
   @keyframes spin   { to { transform: rotate(360deg); } }
   @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
   .fade-up { animation: fadeUp 0.45s ease both; }
   .step-card { transition: transform 0.2s; }
   .step-card:hover { transform: translateX(4px); }
   .custom-input:focus { border-color: rgba(99,102,241,0.45) !important; box-shadow: 0 0 0 3px rgba(99,102,241,0.1) !important; }
-  .btn-login-hover:hover { filter:brightness(1.06); transform:translateY(-1px); box-shadow:0 10px 24px rgba(99,102,241,0.35) !important; transition:all 0.2s; }
-  .btn-google-hover:hover { background:#ececea !important; border-color:rgba(0,0,0,0.15) !important; transform:translateY(-1px); transition:all 0.2s; }
+  .btn-login-hover:active { filter:brightness(0.95); transform:scale(0.98); }
+  .btn-google-hover:active { background:#ececea !important; transform:scale(0.98); }
+
+  /* Desktop hover */
+  @media (hover: hover) {
+    .btn-login-hover:hover { filter:brightness(1.06); transform:translateY(-1px); box-shadow:0 10px 24px rgba(99,102,241,0.35) !important; transition:all 0.2s; }
+    .btn-google-hover:hover { background:#ececea !important; border-color:rgba(0,0,0,0.15) !important; transform:translateY(-1px); transition:all 0.2s; }
+  }
+
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { overflow:hidden; background:#f8f8f6; }
-  @media (max-width: 768px) { .left { display:none !important; } .right { width:100% !important; } }
-  /* Hover effect untuk tombol mata */
-  .eye-button:hover { color: #6366f1 !important; }
+
+  /* ── Hide/show helpers ── */
+  .mobile-header  { display: none; }
+  .desktop-only   { display: block; }
+
+  /* ── Mobile styles ── */
+  @media (max-width: 768px) {
+    /* Layout: stack vertically */
+    div[style*="display:flex"][style*="min-height:100vh"],
+    .register-body {
+      flex-direction: column !important;
+      overflow: auto !important;
+    }
+
+    /* Left panel becomes compact header */
+    .left-panel {
+      width: 100% !important;
+      min-height: auto !important;
+      padding: 20px 20px 18px !important;
+      border-right: none !important;
+      border-bottom: 1px solid rgba(0,0,0,0.07) !important;
+    }
+
+    /* Right panel full width */
+    .right-panel {
+      width: 100% !important;
+      padding: 24px 20px 32px !important;
+      min-height: auto !important;
+      justify-content: flex-start !important;
+    }
+
+    /* Switch desktop/mobile content */
+    .desktop-only { display: none !important; }
+    .mobile-header { display: block !important; }
+
+    /* Mobile step pills */
+    .mobile-steps {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .mobile-step-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(99,102,241,0.07);
+      border: 1px solid rgba(99,102,241,0.18);
+      border-radius: 20px;
+      padding: 5px 11px;
+    }
+
+    .mobile-step-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      color: #6366f1;
+    }
+
+    .mobile-step-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #374151;
+    }
+  }
+
+  /* ── Small mobile (≤ 380px) ── */
+  @media (max-width: 380px) {
+    .left-panel {
+      padding: 16px 16px 14px !important;
+    }
+    .right-panel {
+      padding: 20px 16px 28px !important;
+    }
+    .mobile-step-pill {
+      padding: 4px 9px;
+    }
+  }
 `;
