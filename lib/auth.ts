@@ -7,11 +7,12 @@ import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  trustHost: true, // ← add this for shared hosting
   session: { strategy: "jwt" },
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.AUTH_GOOGLE_ID!,       // ← was GOOGLE_CLIENT_ID
+      clientSecret: process.env.AUTH_GOOGLE_SECRET!, // ← was GOOGLE_CLIENT_SECRET
     }),
     Credentials({
       credentials: {
@@ -20,20 +21,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
-
         if (!user || !user.password) return null;
-
         const valid = await bcrypt.compare(
           credentials.password as string,
           user.password
         );
-
         if (!valid) return null;
-
         return {
           id: user.id,
           email: user.email,
