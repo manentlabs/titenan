@@ -543,8 +543,10 @@ export default function PredictionPage() {
       setRawData(rows);
       setColumns(cols);
       setNumCols(nums);
-      setTargetCol(nums[0]);
-      setFeatureCols(nums.slice(1, Math.min(5, nums.length)));
+      // Auto-pick last numeric col as target (usually dependent var), rest as features
+      const defaultTarget = nums[nums.length - 1];
+      setTargetCol(defaultTarget);
+      setFeatureCols(nums.filter((c) => c !== defaultTarget).slice(0, 5));
       const dateCandidates = cols.filter((c) => c.toLowerCase().includes("date") || c.toLowerCase().includes("time"));
       if (dateCandidates.length) setDateCol(dateCandidates[0]);
     } catch (e) {
@@ -584,6 +586,12 @@ export default function PredictionPage() {
       setError("Pilih minimal 1 kolom fitur untuk regresi");
       return;
     }
+    // Safety: strip target col from features to prevent data leakage / perfect R²
+    const safeFeatureCols = featureCols.filter((c) => c !== targetCol);
+    if (modelType === "regression" && safeFeatureCols.length === 0) {
+      setError("Fitur tidak boleh sama dengan target. Pilih kolom lain.");
+      return;
+    }
     setRunning(true);
     setResult(null);
     setTrainingProgress(null);
@@ -593,12 +601,12 @@ export default function PredictionPage() {
     try {
       if (modelType === "regression") {
         // ── Sync but fast ──
-        const { X_train, y_train, X_test, y_test, trainIdx, testIdx } = prepareRegressionData(rawData, featureCols, targetCol, testRatio);
+        const { X_train, y_train, X_test, y_test, trainIdx, testIdx } = prepareRegressionData(rawData, safeFeatureCols, targetCol, testRatio);
         const { predictions } = linearRegression(X_train, y_train, X_test);
         const metrics = computeMetrics(y_test, predictions);
         const res: PredictionResult = {
           predictions, actuals: y_test, trainIndices: trainIdx, testIndices: testIdx, metrics,
-          modelInfo: { type: "regression", params: { features: featureCols, testRatio }, trainingTime: performance.now() - startTime },
+          modelInfo: { type: "regression", params: { features: safeFeatureCols, testRatio }, trainingTime: performance.now() - startTime },
         };
         setResult(res);
         setActiveTab("plot");
@@ -714,7 +722,7 @@ export default function PredictionPage() {
     }
   }
 
-  // ── D3 Chart (cleanup on every render) ──
+  // ── D3 Chart ──
   useEffect(() => {
     if (!result || !plotRef.current || activeTab !== "plot") return;
 
@@ -724,72 +732,119 @@ export default function PredictionPage() {
 
     const width = svgEl.clientWidth || 800;
     const height = 400;
-    const margin = { top: 24, right: 72, bottom: 50, left: 64 };
+    const margin = { top: 32, right: 72, bottom: 50, left: 64 };
 
     svg.attr("viewBox", `0 0 ${width} ${height}`);
 
-    // Build series
-    const actualPts: { x: number; y: number }[] = [
-      ...result.trainIndices.map((i) => ({ x: i, y: rawData[i]?.[targetCol] as number ?? 0 })),
-      ...result.testIndices.map((idx, i) => ({ x: idx, y: result.actuals[i] })),
-    ].sort((a, b) => a.x - b.x);
+    const toNum = (v: any) => (typeof v === "number" && isFinite(v) ? v : 0);
 
+    // ── Build clean series ──
+    // Train: sorted by row index → smooth line
+    const trainPts = result.trainIndices
+      .map((i) => ({ x: i, y: toNum(rawData[i]?.[targetCol]) }))
+      .filter((d) => isFinite(d.y))
+      .sort((a, b) => a.x - b.x);
+
+    // Test actuals: scatter dots (no line — avoids zigzag for non-sequential regression)
+    const testActualPts = result.testIndices
+      .map((idx, i) => ({ x: idx, y: result.actuals[i] }))
+      .filter((d) => isFinite(d.y))
+      .sort((a, b) => a.x - b.x);
+
+    // Predictions: scatter dots for regression (sequential for LSTM/timeseries)
     const predPts = result.testIndices
       .map((idx, i) => ({ x: idx, y: result.predictions[i] }))
+      .filter((d) => isFinite(d.y))
       .sort((a, b) => a.x - b.x);
 
     const forecastPts = (result.forecastSteps || [])
-      .map((x, i) => ({ x, y: result.forecastValues![i] }));
+      .map((x, i) => ({ x, y: result.forecastValues![i] }))
+      .filter((d) => isFinite(d.y));
 
-    const allX = [...actualPts, ...predPts, ...forecastPts].map((d) => d.x);
-    const allY = [...actualPts, ...predPts, ...forecastPts].map((d) => d.y).filter(isFinite);
+    const isSequential = result.modelInfo.type !== "regression";
 
+    const allY = [...trainPts, ...testActualPts, ...predPts, ...forecastPts].map((d) => d.y).filter(isFinite);
+    const allX = [...trainPts, ...testActualPts, ...predPts, ...forecastPts].map((d) => d.x);
     if (!allX.length || !allY.length) return;
 
     const xExt = d3.extent(allX) as [number, number];
     const yExt = d3.extent(allY) as [number, number];
-    const yPad = (yExt[1] - yExt[0]) * 0.08 || 1;
+    const yPad = Math.max((yExt[1] - yExt[0]) * 0.1, 10);
 
     const xScale = d3.scaleLinear().domain(xExt).range([margin.left, width - margin.right]);
     const yScale = d3.scaleLinear().domain([yExt[0] - yPad, yExt[1] + yPad]).range([height - margin.bottom, margin.top]);
 
+    // Clip path to prevent overflow
+    svg.append("defs").append("clipPath").attr("id", "chart-clip")
+      .append("rect").attr("x", margin.left).attr("y", margin.top)
+      .attr("width", width - margin.left - margin.right)
+      .attr("height", height - margin.top - margin.bottom);
+
     // Grid
-    svg.append("g")
-      .attr("stroke", "rgba(0,0,0,0.05)")
-      .call(g => g.selectAll("line").data(yScale.ticks(5)).join("line")
-        .attr("x1", margin.left).attr("x2", width - margin.right)
-        .attr("y1", d => yScale(d)).attr("y2", d => yScale(d)));
+    svg.append("g").attr("stroke", "rgba(0,0,0,0.05)")
+      .selectAll("line").data(yScale.ticks(5)).join("line")
+      .attr("x1", margin.left).attr("x2", width - margin.right)
+      .attr("y1", (d) => yScale(d)).attr("y2", (d) => yScale(d));
 
     // Axes
-    svg.append("g")
-      .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(xScale).ticks(6))
-      .call(g => g.select(".domain").attr("stroke", "rgba(0,0,0,0.15)"))
-      .call(g => g.selectAll("text").style("font-size", "10px").style("font-family", "'DM Mono',monospace"));
+    svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(xScale).ticks(Math.min(8, allX.length)))
+      .call((g) => g.select(".domain").attr("stroke", "rgba(0,0,0,0.12)"))
+      .call((g) => g.selectAll("text").style("font-size", "10px").style("font-family", "'DM Mono',monospace").style("fill", "#9ca3af"));
 
-    svg.append("g")
-      .attr("transform", `translate(${margin.left},0)`)
+    svg.append("g").attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(yScale).ticks(5))
-      .call(g => g.select(".domain").attr("stroke", "rgba(0,0,0,0.15)"))
-      .call(g => g.selectAll("text").style("font-size", "10px").style("font-family", "'DM Mono',monospace"));
+      .call((g) => g.select(".domain").attr("stroke", "rgba(0,0,0,0.12)"))
+      .call((g) => g.selectAll("text").style("font-size", "10px").style("font-family", "'DM Mono',monospace").style("fill", "#9ca3af"));
 
-    const line = d3.line<{ x: number; y: number }>()
+    const chartGroup = svg.append("g").attr("clip-path", "url(#chart-clip)");
+
+    const lineGen = d3.line<{ x: number; y: number }>()
       .defined((d) => isFinite(d.y))
       .x((d) => xScale(d.x))
-      .y((d) => yScale(d.y));
+      .y((d) => yScale(d.y))
+      .curve(d3.curveMonotoneX);
 
-    // Actual line
-    svg.append("path").datum(actualPts).attr("fill", "none").attr("stroke", "#6366f1").attr("stroke-width", 2).attr("d", line);
+    // ── Train line (always a smooth line) ──
+    if (trainPts.length > 1) {
+      chartGroup.append("path").datum(trainPts)
+        .attr("fill", "none").attr("stroke", "#6366f1").attr("stroke-width", 2)
+        .attr("opacity", 0.85).attr("d", lineGen);
+    }
 
-    // Prediction line
-    svg.append("path").datum(predPts).attr("fill", "none").attr("stroke", "#f59e0b").attr("stroke-width", 2).attr("stroke-dasharray", "6,4").attr("d", line);
+    // ── Test actuals: dots always; also draw line if sequential model ──
+    if (isSequential && testActualPts.length > 1) {
+      chartGroup.append("path").datum(testActualPts)
+        .attr("fill", "none").attr("stroke", "#6366f1").attr("stroke-width", 2)
+        .attr("stroke-dasharray", "4,3").attr("opacity", 0.6).attr("d", lineGen);
+    }
+    chartGroup.selectAll(".dot-actual").data(testActualPts).join("circle")
+      .attr("class", "dot-actual")
+      .attr("cx", (d) => xScale(d.x)).attr("cy", (d) => yScale(d.y))
+      .attr("r", 4).attr("fill", "#6366f1").attr("stroke", "#fff").attr("stroke-width", 1.5);
 
-    // Forecast line
+    // ── Predictions: dots + line if sequential ──
+    if (isSequential && predPts.length > 1) {
+      chartGroup.append("path").datum(predPts)
+        .attr("fill", "none").attr("stroke", "#f59e0b").attr("stroke-width", 2)
+        .attr("stroke-dasharray", "6,4").attr("d", lineGen);
+    }
+    chartGroup.selectAll(".dot-pred").data(predPts).join("circle")
+      .attr("class", "dot-pred")
+      .attr("cx", (d) => xScale(d.x)).attr("cy", (d) => yScale(d.y))
+      .attr("r", 4).attr("fill", "#f59e0b").attr("stroke", "#fff").attr("stroke-width", 1.5);
+
+    // ── Forecast line + dots ──
     if (forecastPts.length) {
-      // Connect last actual/pred point to first forecast
-      const connectPt = predPts[predPts.length - 1] || actualPts[actualPts.length - 1];
+      const connectPt = predPts[predPts.length - 1] || testActualPts[testActualPts.length - 1];
       const connectedForecast = connectPt ? [connectPt, ...forecastPts] : forecastPts;
-      svg.append("path").datum(connectedForecast).attr("fill", "none").attr("stroke", "#ef4444").attr("stroke-width", 2).attr("stroke-dasharray", "3,4").attr("d", line);
+      chartGroup.append("path").datum(connectedForecast)
+        .attr("fill", "none").attr("stroke", "#ef4444").attr("stroke-width", 2)
+        .attr("stroke-dasharray", "3,4").attr("d", lineGen);
+      chartGroup.selectAll(".dot-fc").data(forecastPts).join("circle")
+        .attr("class", "dot-fc")
+        .attr("cx", (d) => xScale(d.x)).attr("cy", (d) => yScale(d.y))
+        .attr("r", 3).attr("fill", "#ef4444").attr("stroke", "#fff").attr("stroke-width", 1);
     }
 
     // Train/test divider
@@ -798,24 +853,30 @@ export default function PredictionPage() {
       svg.append("line")
         .attr("x1", divX).attr("x2", divX)
         .attr("y1", margin.top).attr("y2", height - margin.bottom)
-        .attr("stroke", "rgba(0,0,0,0.15)").attr("stroke-dasharray", "4,4").attr("stroke-width", 1);
-      svg.append("text").attr("x", divX + 4).attr("y", margin.top + 12)
-        .text("test →").style("font-size", "9px").style("fill", "#9ca3af").style("font-family", "'DM Mono',monospace");
+        .attr("stroke", "rgba(0,0,0,0.12)").attr("stroke-dasharray", "4,4").attr("stroke-width", 1);
+      svg.append("text").attr("x", divX + 4).attr("y", margin.top - 6)
+        .text("← train  |  test →")
+        .style("font-size", "9px").style("fill", "#9ca3af").style("font-family", "'DM Mono',monospace");
     }
 
     // Legend
     const legendData = [
-      { label: "Aktual", color: "#6366f1", dash: "none" },
-      { label: "Prediksi", color: "#f59e0b", dash: "6,4" },
-      ...(forecastPts.length ? [{ label: "Forecast", color: "#ef4444", dash: "3,4" }] : []),
+      { label: "Aktual (train)", color: "#6366f1", type: "line" },
+      { label: "Aktual (test)", color: "#6366f1", type: "dot" },
+      { label: "Prediksi", color: "#f59e0b", type: "dot" },
+      ...(forecastPts.length ? [{ label: "Forecast", color: "#ef4444", type: "dot" }] : []),
     ];
 
     const legend = svg.append("g").attr("transform", `translate(${margin.left + 8},${margin.top + 4})`);
     legendData.forEach((item, i) => {
-      const g = legend.append("g").attr("transform", `translate(${i * 90},0)`);
-      g.append("line").attr("x1", 0).attr("x2", 18).attr("y1", 5).attr("y2", 5)
-        .attr("stroke", item.color).attr("stroke-width", 2)
-        .attr("stroke-dasharray", item.dash === "none" ? null : item.dash);
+      const g = legend.append("g").attr("transform", `translate(${i * 112},0)`);
+      if (item.type === "line") {
+        g.append("line").attr("x1", 0).attr("x2", 18).attr("y1", 5).attr("y2", 5)
+          .attr("stroke", item.color).attr("stroke-width", 2);
+      } else {
+        g.append("circle").attr("cx", 9).attr("cy", 5).attr("r", 4)
+          .attr("fill", item.color).attr("stroke", "#fff").attr("stroke-width", 1.5);
+      }
       g.append("text").attr("x", 22).attr("y", 9).text(item.label)
         .style("font-size", "10px").style("fill", "#6b7280").style("font-family", "'Outfit',sans-serif");
     });
@@ -896,11 +957,11 @@ export default function PredictionPage() {
                 <p style={{ marginTop: 8, marginBottom: 4, fontSize: 10, color: "#9ca3af" }}>Fitur (X)</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {numCols.filter((c) => c !== targetCol).map((c) => (
-                    <label key={c} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer" }}>
+                    <label key={c} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer", padding: "3px 6px", borderRadius: 6, background: featureCols.includes(c) ? "rgba(99,102,241,0.08)" : "transparent" }}>
                       <input type="checkbox" checked={featureCols.includes(c)} onChange={(e) => {
                         if (e.target.checked) setFeatureCols([...featureCols, c]);
                         else setFeatureCols(featureCols.filter((f) => f !== c));
-                      }} /> {c}
+                      }} style={{ accentColor: "#6366f1" }} /> {c}
                     </label>
                   ))}
                 </div>
